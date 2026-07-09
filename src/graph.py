@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Protocol, Optional, Callable
+from typing import Protocol, Optional, Callable, Self
 
 import numpy as np
 
@@ -28,6 +28,24 @@ class Node(Protocol):
     def backward(self, dy: Optional[np.ndarray] = None) -> None:
         raise NotImplementedError()
 
+    def __neg__(self) -> Self:
+        raise NotImplementedError()
+
+    def __add__(self, other: Self) -> Self:
+        raise NotImplementedError()
+
+    def __sub__(self, other: Self) -> Self:
+        raise NotImplementedError()
+
+    def __mul__(self, other: Self) -> Self:
+        raise NotImplementedError()
+
+    def __truediv__(self, other: Self) -> Self:
+        raise NotImplementedError()
+
+    def __matmul__(self, other: Self) -> Self:
+        raise NotImplementedError()
+
 class AbstractNode(ABC, Node):
 
     @property
@@ -42,6 +60,38 @@ class AbstractNode(ABC, Node):
         if dy is None:
             dy = np.eye(np.array(self.shape).prod()).reshape(self.shape + self.shape)
         self._backward(dy)
+
+    def __neg__(self):
+        return Func(self, lambda x: -x, lambda x: -np.ones_like(x))
+
+    def __add__(self, other):
+        return Add(self, other)
+
+    def __sub__(self, other):
+        return Add(self, -other)
+
+    def __mul__(self, other):
+        return Mult(self, other)
+
+    def __truediv__(self, other):
+        return Mult(self, Func(self, lambda x: 1/x, lambda x: -1/x**2))
+
+    def __matmul__(self, other):
+        return Dot(self, other)
+
+class Const(AbstractNode):
+
+    value: np.ndarray
+
+    def __init__(self, value: np.ndarray):
+        self.value = value
+
+    @property
+    def requires_grad(self) -> bool:
+        return False
+
+    def _backward(self, dy: np.ndarray) -> None:
+        pass
 
 class WeightNode(AbstractNode):
 
